@@ -3,6 +3,7 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
+var jwt = require('jsonwebtoken');
 
 
 var db = require('./app/config');
@@ -26,7 +27,7 @@ app.use(express.static(__dirname + '/public'));
 
 app.get('/', 
 function(req, res) {
-  res.render('login');
+  res.render('index');
 });
 
 app.get('/create', 
@@ -56,6 +57,7 @@ function(req, res) {
     console.log(bcrypt.compareSync(submittedPass, hashedPass))
     if (bcrypt.compareSync(submittedPass, hashedPass)) {
       console.log('Youve been logged in! Maybe...muhahaha');
+      //give em da token
       res.render('index')
     } else {
       console.log('wrong password bruh');
@@ -111,7 +113,11 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
-
+var checkUser = () => {
+  //check routes that need to verify login
+  //if not logged in, redirect to login page
+  //allow through if logged in
+}
 
 
 /************************************************************/
