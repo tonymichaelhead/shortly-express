@@ -3,7 +3,8 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
-var jwt = require('jsonwebtoken');
+var session = require('express-session');
+var FileStore = require('session-file-store')(session);
 
 
 var db = require('./app/config');
@@ -23,16 +24,34 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
-
+app.use(session({key: 'keyhere', secret: 'supersecretyo'}));
 
 app.get('/', 
 function(req, res) {
-  res.render('index');
+  if (req.session.auth) {
+    res.render('index');
+  } else {
+    res.render('login');
+  }
+});
+
+app.get('/logout', 
+function(req, res) {
+  if (req.session.auth) {
+    req.session.auth = false;
+    res.render('login');
+  } else {
+    res.render('login');
+  }
 });
 
 app.get('/create', 
 function(req, res) {
-  res.render('index');
+  if (req.session.auth) {
+    res.render('index');
+  } else {
+    res.render('login');
+  }
 });
 
 app.get('/signup',
@@ -42,9 +61,13 @@ function(req, res) {
 
 app.get('/links', 
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.status(200).send(links.models);
-  });
+  if (req.session.auth) {
+    Links.reset().fetch().then(function(links) {
+      res.status(200).send(links.models);
+    });
+  } else {
+    res.render('login');
+  }
 });
 
 app.post('/login',
@@ -58,7 +81,8 @@ function(req, res) {
     if (bcrypt.compareSync(submittedPass, hashedPass)) {
       console.log('Youve been logged in! Maybe...muhahaha');
       //give em da token
-      res.render('index')
+      req.session.auth = true;
+      res.redirect(301, 'index');
     } else {
       console.log('wrong password bruh');
     }
@@ -73,7 +97,8 @@ function(req, res) {
   var hashPass = bcrypt.hashSync(req.body.password);
   let newUser = new User( {username: req.body.username, password: hashPass} );
   newUser.save(null, {method: 'insert'});
-  res.render('index')
+  req.session.auth = true;
+  res.redirect(301, 'index');
 });
 
 app.post('/links', 
@@ -113,7 +138,8 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
-var checkUser = () => {
+
+var checkUser = (url) => {
   //check routes that need to verify login
   //if not logged in, redirect to login page
   //allow through if logged in
