@@ -2,6 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -25,7 +26,7 @@ app.use(express.static(__dirname + '/public'));
 
 app.get('/', 
 function(req, res) {
-  res.render('index');
+  res.render('login');
 });
 
 app.get('/create', 
@@ -33,11 +34,44 @@ function(req, res) {
   res.render('index');
 });
 
+app.get('/signup',
+function(req, res) {
+  res.render('signup');
+})
+
 app.get('/links', 
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.status(200).send(links.models);
   });
+});
+
+app.post('/login',
+function(req, res) {
+  //query table
+  User.where('username', req.body.username).fetch().then( (user) => {
+    console.log('hashed password is: ' + user.attributes.password)
+    let hashedPass = user.attributes.password;
+    let submittedPass = req.body.password;
+    console.log(bcrypt.compareSync(submittedPass, hashedPass))
+    if (bcrypt.compareSync(submittedPass, hashedPass)) {
+      console.log('Youve been logged in! Maybe...muhahaha');
+      res.render('index')
+    } else {
+      console.log('wrong password bruh');
+    }
+  }).catch( (err) => {
+    console.error(err);
+  })
+});
+
+app.post('/signup',
+function(req, res) {
+  console.log(req.body.password);
+  var hashPass = bcrypt.hashSync(req.body.password);
+  let newUser = new User( {username: req.body.username, password: hashPass} );
+  newUser.save(null, {method: 'insert'});
+  res.render('index')
 });
 
 app.post('/links', 
@@ -48,6 +82,8 @@ function(req, res) {
     console.log('Not a valid url: ', uri);
     return res.sendStatus(404);
   }
+
+
 
   new Link({ url: uri }).fetch().then(function(found) {
     if (found) {
